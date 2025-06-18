@@ -1,58 +1,58 @@
 import streamlit as st
 import pandas as pd
-import os
-from llama_index.core import VectorStoreIndex, SimpleDirectoryReader, ServiceContext
-from llama_index.core.chat_engine import ContextChatEngine
-from llama_index.core.memory import ChatMemoryBuffer
-from llama_index.llms.openai import OpenAI
-from llama_index.embeddings.openai import OpenAIEmbedding
 from llama_index.readers.file import CSVReader
+from llama_index.core import VectorStoreIndex, ServiceContext, SimpleDirectoryReader
+from llama_index.core.llms import ChatMessage
+from llama_index.llms.openai import OpenAI
+from llama_index.core.memory import ChatMemoryBuffer
+from llama_index.core.chat_engine import ContextChatEngine
 from pathlib import Path
 
-# Set OpenAI API key from Streamlit secrets
-openai_api_key = st.secrets["OPENAI_API_KEY"]
-
-# Streamlit UI
-st.set_page_config(page_title="Memory-Enabled CSV GPT App", layout="wide")
+# --- UI Config ---
+st.set_page_config(page_title="Memory-Enabled RAG App on CSV", layout="wide")
 st.title("🧠 Memory-Enabled RAG App on CSV")
-st.write("Upload a CSV file and start chatting with memory! Follow-up questions are now smarter.")
+st.markdown("Upload a CSV file and start chatting with memory! Follow-up questions are now smarter.")
 
-# Upload CSV
-uploaded_file = st.file_uploader("Upload your CSV file", type=["csv"])
+# --- Upload CSV ---
+uploaded_file = st.file_uploader("📁 Upload your CSV file", type=["csv"])
 
-if uploaded_file:
-    with open("uploaded.csv", "wb") as f:
-        f.write(uploaded_file.read())
-        
-    file_path = Path("uploaded.csv")  # <--- Convert to Path object
-    # Load data
-    csv_reader = CSVReader()
-    docs = csv_reader.load_data("uploaded.csv")
+# --- Input Prompt ---
+user_query = st.text_input("💬 Enter your question (e.g. 'What is the total revenue in Q1?')")
 
-    # LLM Setup with Memory
-    llm = OpenAI(model="gpt-3.5-turbo", api_key=openai_api_key)
-    embed_model = OpenAIEmbedding(api_key=openai_api_key)
-    service_context = ServiceContext.from_defaults(llm=llm, embed_model=embed_model)
-    index = VectorStoreIndex.from_documents(docs, service_context=service_context)
+# --- Proceed if both file and question are provided ---
+if uploaded_file and user_query:
+    try:
+        # Save uploaded file to disk
+        with open("uploaded.csv", "wb") as f:
+            f.write(uploaded_file.read())
 
-    # Memory setup
-    memory = ChatMemoryBuffer.from_defaults(token_limit=1500)
-    chat_engine = index.as_chat_engine(chat_mode="context", memory=memory)
+        file_path = Path("uploaded.csv")
 
-    # Chat UI
-    if "chat_history" not in st.session_state:
-        st.session_state.chat_history = []
+        # Read CSV using LlamaIndex's CSVReader
+        csv_reader = CSVReader()
+        docs = csv_reader.load_data(file_path)
 
-    user_input = st.chat_input("Ask a question about your data...")
+        # Set up OpenAI LLM with your API key from Streamlit secrets
+        openai_api_key = st.secrets["openai_api_key"]
+        llm = OpenAI(api_key=openai_api_key, model="gpt-3.5-turbo")
 
-    if user_input:
-        st.session_state.chat_history.append(("user", user_input))
-        response = chat_engine.chat(user_input)
-        st.session_state.chat_history.append(("assistant", response.response))
+        # Enable memory
+        memory = ChatMemoryBuffer.from_defaults(token_limit=1500)
 
-    # Display chat
-    for role, message in st.session_state.chat_history:
-        if role == "user":
-            st.chat_message("user").write(message)
-        else:
-            st.chat_message("assistant").write(message)
+        # Create index and chat engine
+        index = VectorStoreIndex.from_documents(docs)
+        service_context = ServiceContext.from_defaults(llm=llm)
+        chat_engine = index.as_chat_engine(
+            chat_mode="context",
+            memory=memory,
+            service_context=service_context,
+        )
+
+        # Query the engine
+        response = chat_engine.chat(user_query)
+
+        # Display result
+        st.success(f"✅ Answer: {response.response}")
+
+    except Exception as e:
+        st.error(f"An error occurred: {e}")
