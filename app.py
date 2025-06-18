@@ -7,6 +7,7 @@ from llama_index.core.memory import ChatMemoryBuffer
 from llama_index.llms.openai import OpenAI
 from llama_index.embeddings.openai import OpenAIEmbedding
 from llama_index.readers.file import CSVReader
+from pathlib import Path
 
 # Set OpenAI API key from Streamlit secrets
 openai_api_key = st.secrets["OPENAI_API_KEY"]
@@ -22,7 +23,8 @@ uploaded_file = st.file_uploader("Upload your CSV file", type=["csv"])
 if uploaded_file:
     with open("uploaded.csv", "wb") as f:
         f.write(uploaded_file.read())
-
+        
+    file_path = Path("uploaded.csv")  # <--- Convert to Path object
     # Load data
     csv_reader = CSVReader()
     docs = csv_reader.load_data("uploaded.csv")
