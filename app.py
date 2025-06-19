@@ -34,6 +34,8 @@ if uploaded_file and user_query:
 
         # Set up OpenAI LLM with your API key from Streamlit secrets
         openai_api_key = st.secrets["openai_api_key"]
+        os.environ["OPENAI_API_KEY"] = st.secrets["openai_api_key"]
+        
         llm = OpenAI(api_key=openai_api_key, model="gpt-3.5-turbo")
 
         # Enable memory
