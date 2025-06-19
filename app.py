@@ -7,6 +7,8 @@ from llama_index.llms.openai import OpenAI
 from llama_index.core.memory import ChatMemoryBuffer
 from llama_index.core.chat_engine import ContextChatEngine
 from pathlib import Path
+import os
+
 
 # --- UI Config ---
 st.set_page_config(page_title="Memory-Enabled RAG App on CSV", layout="wide")
